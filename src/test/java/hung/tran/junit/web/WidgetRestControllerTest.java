@@ -174,6 +174,54 @@ public class WidgetRestControllerTest {
                 .andExpect(jsonPath("$.description", is("This is my widget")))
                 .andExpect(jsonPath("$.version", is(3)));
     }
+    
+    @Test
+    @DisplayName("PUT /rest/widget/1 - Conflict")
+    void testUpdateWidgetConflict() throws Exception {
+        // Setup our mocked service
+        Widget widgetToPut = Widget.builder()
+        		.name("New Widget")
+        		.description("This is my widget")
+        		.version(1)
+        		.build();
+        Widget widgetToReturn = Widget.builder()
+        		.id(1L)
+        		.name("New Widget")
+        		.description("This is my widget")
+        		.version(2)
+        		.build();
+        doReturn(Optional.of(widgetToReturn)).when(service).findById(1L);
+        doReturn(widgetToReturn).when(service).save(any());
+
+        // Execute the POST request
+        mockMvc.perform(put("/rest/widget/{id}", 1l)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.IF_MATCH, 3)
+                .content(asJsonString(widgetToPut)))
+
+                // Validate the response code and content type
+                .andExpect(status().isConflict());
+    }
+    
+    @Test
+    @DisplayName("PUT /rest/widget/1 - Not Found")
+    void testUpdateWidgetNotFound() throws Exception {
+        // Setup our mocked service
+        Widget widgetToPut = Widget.builder()
+        		.name("New Widget")
+        		.description("This is my widget")
+        		.build();
+        doReturn(Optional.empty()).when(service).findById(1L);
+
+        // Execute the POST request
+        mockMvc.perform(put("/rest/widget/{id}", 1l)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.IF_MATCH, 3)
+                .content(asJsonString(widgetToPut)))
+
+                // Validate the response code and content type
+                .andExpect(status().isNotFound());
+    }
 	
     static String asJsonString(final Object obj) {
         try {
